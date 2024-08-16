@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\CreatePersonaRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+// use Intervention\Image\Laravel\Facades\Image;
+use Intervention\Image\Facades\Image;
 use App\Models\Persona;
 
 class PersonaController extends Controller
@@ -31,15 +34,28 @@ class PersonaController extends Controller
     {
         $validatedData = $request->validated();
         $validatedData['cPerRnd'] = 'abc123xyz';
-
+    
         if ($request->hasFile('image')) {
-            $validatedData['image'] = $request->file('image')->store('images');
+            $image = $request->file('image');
+            
+            // Redimensionar la imagen a un ancho máximo de 800 píxeles y limitar los colores a 255.
+            $optimizedImage = Image::make($image)->widen(800)->limitColors(255)->encode();
+            
+            // Guardar la imagen optimizada en el directorio 'images' del almacenamiento.
+            $imagePath = $image->store('images');
+            \Storage::put($imagePath, (string) $optimizedImage);
+    
+            // Asignar la ruta de la imagen optimizada al array de datos validados.
+            $validatedData['image'] = $imagePath;
         }
-
+    
+        // Crear una nueva instancia de Persona en la base de datos con los datos validados.
         Persona::create($validatedData);
-
+    
+        // Redirigir a la lista de personas con un mensaje de éxito.
         return redirect()->route('personas.index')->with('success', 'Persona creada exitosamente.');
     }
+    
 
     public function edit($nPerCodigo)
     {
